@@ -1,0 +1,28 @@
+import java.io.*;
+import java.util.*;
+
+import org.codehaus.plexus.util.*;
+
+String classpath = FileUtils.fileRead( new File( basedir, "target/classpath.txt" ) );
+
+classpath = StringUtils.replace( classpath, "PREFIX/", "" );
+
+List actual = Arrays.asList( classpath.split( ":" ) );
+
+List expected = new ArrayList();
+expected.add( "maven-profile-2.0.6.jar" );
+expected.add( "maven-model-2.0.6.jar" );
+expected.add( "plexus-utils-1.4.1.jar" );
+expected.add( "plexus-container-default-1.0-alpha-9-stable-1.jar" );
+expected.add( "junit-3.8.1.jar" );
+
+System.out.println( "Checking classpath... " );
+System.out.println( "Actual  : " + actual );
+System.out.println( "Expected: " + expected );
+
+if ( !actual.equals( expected ) )
+{
+    throw new Exception( "Unexpected classpath" );
+}
+
+return true;
