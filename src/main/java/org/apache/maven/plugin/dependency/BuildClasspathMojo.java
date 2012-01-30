@@ -28,6 +28,7 @@ import java.io.IOException;
 import java.io.Writer;
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Set;
@@ -37,6 +38,7 @@ import java.util.regex.Pattern;
 import org.apache.maven.artifact.Artifact;
 import org.apache.maven.plugin.MojoExecutionException;
 import org.apache.maven.plugin.dependency.utils.DependencyUtil;
+import org.apache.maven.project.MavenProject;
 import org.apache.maven.project.MavenProjectHelper;
 import org.apache.maven.shared.artifact.filter.collection.ArtifactsFilter;
 import org.codehaus.plexus.util.IOUtil;
@@ -140,6 +142,13 @@ public class BuildClasspathMojo
      * @parameter default-value=false expression="${mdep.outputFilterFile}"
      */
     boolean outputFilterFile;
+    
+    /**
+     * Removes artifacts for local projects and substitutes actual compiled class directories
+     *
+     * @parameter default-value=false expression="${mdep.followProjectLinks}"
+     */
+    boolean followProjectLinks;
 
     /**
      * Maven ProjectHelper
@@ -179,9 +188,29 @@ public class BuildClasspathMojo
         {
             localRepoProperty = "${M2_REPO}";
         }
-
-        Set<Artifact> artifacts = getResolvedDependencies( true );
-
+        
+        Set<Artifact> artifacts = getResolvedDependencies(true)  ;
+        
+        
+        Set<MavenProject> referencedProjects = new HashSet<MavenProject>();
+        
+        if(project.getParent() != null && followProjectLinks)
+        {
+	        referencedProjects.add(this.project);
+	        
+	        //TODO follow full tree
+        	MavenProject parent = project.getParent();
+        	List<?> collectedProjects = parent.getCollectedProjects();
+        	for(Object o : collectedProjects)
+        	{
+        		MavenProject p = (MavenProject) o;
+        		if(artifacts.contains(p.getArtifact())) {
+        			artifacts.remove(p.getArtifact());
+        			referencedProjects.add(p);
+        		}
+        	}
+        }
+        
         if ( artifacts == null || artifacts.isEmpty() )
         {
             getLog().info( "No dependencies found." );
@@ -190,6 +219,18 @@ public class BuildClasspathMojo
         List<Artifact> artList = new ArrayList<Artifact>( artifacts );
 
         StringBuffer sb = new StringBuffer();
+        
+        if(!referencedProjects.isEmpty())
+        {
+        	for(MavenProject p : referencedProjects)
+        	{
+        		sb.append(p.getBasedir().getAbsolutePath() + "/target/classes");
+                sb.append( isPathSepSet ? this.pathSeparator : File.pathSeparator );
+        		sb.append(p.getBasedir().getAbsolutePath() + "/target/test-classes");
+                sb.append( isPathSepSet ? this.pathSeparator : File.pathSeparator );
+        	}
+        }
+        
         Iterator<Artifact> i = artList.iterator();
 
         if ( i.hasNext() )
@@ -241,7 +282,7 @@ public class BuildClasspathMojo
             attachFile( cpString );
         }
     }
-
+    
     protected void attachFile( String cpString )
         throws MojoExecutionException
     {

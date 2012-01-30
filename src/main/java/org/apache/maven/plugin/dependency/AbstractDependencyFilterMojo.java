@@ -27,6 +27,7 @@ import org.apache.maven.plugin.dependency.utils.resolvers.ArtifactsResolver;
 import org.apache.maven.plugin.dependency.utils.resolvers.DefaultArtifactsResolver;
 import org.apache.maven.plugin.dependency.utils.translators.ArtifactTranslator;
 import org.apache.maven.plugin.dependency.utils.translators.ClassifierTypeTranslator;
+import org.apache.maven.project.MavenProject;
 import org.apache.maven.shared.artifact.filter.collection.ArtifactFilterException;
 import org.apache.maven.shared.artifact.filter.collection.ArtifactIdFilter;
 import org.apache.maven.shared.artifact.filter.collection.ArtifactsFilter;
@@ -230,11 +231,22 @@ public abstract class AbstractDependencyFilterMojo
         throws MojoExecutionException
 
     {
-        DependencyStatusSets status = getDependencySets( stopOnFailure );
-
-        return status.getResolvedDependencies();
+        return getDependencySets( stopOnFailure ).getResolvedDependencies();
     }
+    
+    protected Set<Artifact> getResolvedDependencies( boolean stopOnFailure, MavenProject project )
+        throws MojoExecutionException
 
+    {
+        return getDependencySets( stopOnFailure, project ).getResolvedDependencies();
+    }
+    
+    protected DependencyStatusSets getDependencySets( boolean stopOnFailure)
+        throws MojoExecutionException
+    {
+    	return getDependencySets(stopOnFailure, project);
+    }
+    
     /**
      *
      * Method creates filters and filters the projects dependencies. This method
@@ -246,7 +258,7 @@ public abstract class AbstractDependencyFilterMojo
      *         on the projects dependencies
      * @throws MojoExecutionException
      */
-    protected DependencyStatusSets getDependencySets( boolean stopOnFailure )
+    protected DependencyStatusSets getDependencySets( boolean stopOnFailure, MavenProject project )
         throws MojoExecutionException
     {
         // add filters in well known order, least specific to most specific
